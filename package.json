@@ -1,0 +1,7 @@
+{
+  "name": "mybudget",
+  "version": "1.0.0",
+  "dependencies": {
+    "plaid": "^25.0.0"
+  }
+}
