@@ -50,4 +50,4 @@ function setCors(res) {
 
 }
 
-module.exports = { getPlaidClient, getTokenStore, setCors };
+module.exports = { getPlaidClient, getTokenStore, setCors }; 
