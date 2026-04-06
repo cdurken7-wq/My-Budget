@@ -757,9 +757,6 @@ async function openPlaidLink(){
         if(exData.success){
           toast(`${institution} connected!`);
           // Show the user the TOKEN_STORE value they need to add to Netlify
-          if(exData.token_store){
-            showTokenStorePrompt(exData.token_store);
-          }
           await loadConnectedBanks();
           await syncAll();
         }
