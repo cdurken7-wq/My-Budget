@@ -1,67 +1,72 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { PlaidApi, PlaidEnvironments, Configuration } = require('plaid');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const plaidConfig = new Configuration({
-  basePath: 'https://development.plaid.com',
-  baseOptions: {
-    headers: {
-      'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-      'PLAID-SECRET': process.env.PLAID_SECRET,
-    },
-  },
-});
-const plaidClient = new PlaidApi(plaidConfig);
+const PLAID_CLIENT_ID = process.env.PLAID_CLIENT_ID;
+const PLAID_SECRET = process.env.PLAID_SECRET;
+const PLAID_BASE = 'https://development.plaid.com';
 
 const accessTokens = {};
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+async function plaidPost(path, body) {
+  const res = await fetch(`${PLAID_BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'PLAID-CLIENT-ID': PLAID_CLIENT_ID,
+      'PLAID-SECRET': PLAID_SECRET,
+    },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    has_client_id: !!PLAID_CLIENT_ID,
+    has_secret: !!PLAID_SECRET,
+    plaid_base: PLAID_BASE,
+  });
+});
+
 app.post('/create-link-token', async (req, res) => {
   try {
-    const response = await fetch('https://development.plaid.com/link/token/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-        'PLAID-SECRET': process.env.PLAID_SECRET,
-      },
-      body: JSON.stringify({
-        user: { client_user_id: 'personal-budget-user' },
-        client_name: 'MyBudget',
-        products: ['transactions'],
-        country_codes: ['US'],
-        language: 'en',
-      }),
+    const data = await plaidPost('/link/token/create', {
+      user: { client_user_id: 'personal-budget-user' },
+      client_name: 'MyBudget',
+      products: ['transactions'],
+      country_codes: ['US'],
+      language: 'en',
     });
-    const data = await response.json();
     if (data.link_token) {
       res.json({ link_token: data.link_token });
     } else {
-      console.error('Plaid error:', data);
+      console.error('Plaid error:', JSON.stringify(data));
       res.status(500).json({ error: data });
     }
   } catch (err) {
-    console.error('create-link-token error:', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('create-link-token error:', err.message, err.cause);
+    res.status(500).json({ error: err.message, cause: String(err.cause) });
   }
 });
+
 app.post('/exchange-token', async (req, res) => {
   const { public_token, institution_name } = req.body;
   try {
-    const response = await plaidClient.itemPublicTokenExchange({ public_token });
-    const accessToken = response.data.access_token;
-    const itemId = response.data.item_id;
+    const data = await plaidPost('/item/public_token/exchange', { public_token });
+    const accessToken = data.access_token;
+    const itemId = data.item_id;
     accessTokens[itemId] = { accessToken, institutionName: institution_name || 'My Bank' };
     console.log(`Connected: ${institution_name} (${itemId})`);
     res.json({ success: true, item_id: itemId, institution: institution_name });
   } catch (err) {
-    console.error('exchange-token error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Failed to exchange token' });
+    console.error('exchange-token error:', err.message, err.cause);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -77,13 +82,13 @@ app.get('/transactions', async (req, res) => {
 
   for (const [itemId, { accessToken, institutionName }] of Object.entries(accessTokens)) {
     try {
-      const response = await plaidClient.transactionsGet({
+      const data = await plaidPost('/transactions/get', {
         access_token: accessToken,
         start_date: startDate,
         end_date: endDate,
         options: { count: 500, offset: 0 },
       });
-      const txs = response.data.transactions.map(tx => ({
+      const txs = (data.transactions || []).map(tx => ({
         id: tx.transaction_id,
         desc: tx.merchant_name || tx.name,
         amount: Math.abs(tx.amount),
@@ -94,7 +99,7 @@ app.get('/transactions', async (req, res) => {
         pending: tx.pending,
       }));
       allTransactions.push(...txs);
-      const accounts = response.data.accounts.map(a => ({
+      const accounts = (data.accounts || []).map(a => ({
         id: a.account_id,
         name: a.name,
         institution: institutionName,
@@ -105,7 +110,7 @@ app.get('/transactions', async (req, res) => {
       }));
       allAccounts.push(...accounts);
     } catch (err) {
-      console.error(`Error fetching ${institutionName}:`, err.response?.data || err.message);
+      console.error(`Error fetching ${institutionName}:`, err.message);
     }
   }
 
@@ -124,7 +129,7 @@ app.delete('/bank/:itemId', async (req, res) => {
   const { itemId } = req.params;
   if (accessTokens[itemId]) {
     try {
-      await plaidClient.itemRemove({ access_token: accessTokens[itemId].accessToken });
+      await plaidPost('/item/remove', { access_token: accessTokens[itemId].accessToken });
     } catch (e) {}
     delete accessTokens[itemId];
   }
@@ -147,4 +152,9 @@ function mapPlaidCategory(plaidCat) {
 }
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ MyBudget server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ MyBudget server running on port ${PORT}`);
+  console.log(`Plaid base: ${PLAID_BASE}`);
+  console.log(`Client ID set: ${!!PLAID_CLIENT_ID}`);
+  console.log(`Secret set: ${!!PLAID_SECRET}`);
+});
