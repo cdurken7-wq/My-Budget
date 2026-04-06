@@ -1,8 +1,14 @@
 const { PlaidApi, PlaidEnvironments, Configuration } = require('plaid');
 
 function getPlaidClient() {
+  const env = (process.env.PLAID_ENV || 'development').toLowerCase().trim();
+  const basePath =
+    env === 'sandbox'    ? PlaidEnvironments.sandbox :
+    env === 'production' ? PlaidEnvironments.production :
+                           PlaidEnvironments.development;
+
   const config = new Configuration({
-    basePath: PlaidEnvironments[process.env.PLAID_ENV || 'development'],
+    basePath,
     baseOptions: {
       headers: {
         'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
