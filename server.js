@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 const plaidConfig = new Configuration({
-  basePath: PlaidEnvironments.development,
+  basePath: 'https://development.plaid.com',
   baseOptions: {
     headers: {
       'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
