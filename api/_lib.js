@@ -1,37 +1,53 @@
 const { PlaidApi, PlaidEnvironments, Configuration } = require('plaid');
 
 function getPlaidClient() {
-  const env = (process.env.PLAID_ENV || 'development').toLowerCase().trim();
-  const basePath =
-    env === 'sandbox'    ? PlaidEnvironments.sandbox :
-    env === 'production' ? PlaidEnvironments.production :
-                           PlaidEnvironments.development;
 
   const config = new Configuration({
-    basePath,
+
+    basePath: 'https://development.plaid.com',
+
     baseOptions: {
+
       headers: {
+
         'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
+
         'PLAID-SECRET': process.env.PLAID_SECRET,
+
       },
+
     },
+
   });
+
   return new PlaidApi(config);
+
 }
 
 function getTokenStore() {
+
   try {
+
     const raw = process.env.TOKEN_STORE;
+
     return raw ? JSON.parse(Buffer.from(raw, 'base64').toString()) : {};
+
   } catch (e) {
+
     return {};
+
   }
+
 }
 
 function setCors(res) {
+
   res.setHeader('Access-Control-Allow-Origin', '*');
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
 }
 
 module.exports = { getPlaidClient, getTokenStore, setCors };
