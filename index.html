@@ -810,7 +810,7 @@ async function syncAll(){
 }
 async function disconnectBank(id){
   if(!confirm('Disconnect this bank?')) return;
-  await fetch(`${API_BASE}/remove-bank?itemId=${id}`,{method:'DELETE'});
+  await fetch(`${API_BASE}/bank/${id}`,{method:'DELETE'});
   await loadConnectedBanks(); toast('Bank disconnected');
 }
 
