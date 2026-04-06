@@ -454,7 +454,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-const API_BASE = '/api';
+const API_BASE = 'https://my-budget-ffs5.onrender.com';
 
 const CATS    = ['Groceries','Dining','Transport','Housing','Entertainment','Health','Shopping','Utilities','Income','Other'];
 const CAT_EMOJI = {Groceries:'🛒',Dining:'🍽️',Transport:'🚗',Housing:'🏠',Entertainment:'🎬',Health:'💊',Shopping:'🛍️',Utilities:'⚡',Income:'💰',Other:'📦'};
@@ -757,9 +757,6 @@ async function openPlaidLink(){
         if(exData.success){
           toast(`${institution} connected!`);
           // Show the user the TOKEN_STORE value they need to add to Netlify
-          if(exData.token_store){
-            showTokenStorePrompt(exData.token_store);
-          }
           await loadConnectedBanks();
           await syncAll();
         }
@@ -810,7 +807,7 @@ async function syncAll(){
 }
 async function disconnectBank(id){
   if(!confirm('Disconnect this bank?')) return;
-  await fetch(`${API_BASE}/remove-bank?itemId=${id}`,{method:'DELETE'});
+  await fetch(`${API_BASE}/bank/${id}`,{method:'DELETE'});
   await loadConnectedBanks(); toast('Bank disconnected');
 }
 
