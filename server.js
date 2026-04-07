@@ -8,7 +8,7 @@ app.use(express.json());
 
 const PLAID_CLIENT_ID = process.env.PLAID_CLIENT_ID;
 const PLAID_SECRET = process.env.PLAID_SECRET;
-const PLAID_BASE = 'https://development.plaid.com';
+const PLAID_BASE = 'https://production.plaid.com';
 
 const accessTokens = {};
 
